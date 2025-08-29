@@ -2,71 +2,41 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>圖片工具</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teng Image Tools</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f2f2f2;
+    body { font-family: Arial, sans-serif; margin: 20px; background:#0b1020; color:#e7ecf3; }
+    h1, h2 { text-align: center; }
+    .tabs { display: flex; justify-content: center; margin-bottom: 20px; flex-wrap:wrap; }
+    .tab { padding: 10px 20px; cursor: pointer; border: 1px solid #ccc; margin: 5px; border-radius:6px; }
+    .tab.active { background: #007bff; color: #fff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    textarea { width: 100%; height: 150px; }
+    img.preview { max-width: 100%; max-height: 200px; display: block; margin: 10px auto; }
+    select, input[type="number"], input[type="text"], input[type="range"] {
+      padding:10px; border-radius:6px; border:1px solid #27314a; background:#141a2e; color:#e7ecf3; font-size:16px; width:100%;
+      box-sizing:border-box;
     }
-    .container {
-      max-width: 900px;
-      margin: auto;
-      padding: 20px;
-    }
-    h1 {
-      text-align: center;
-    }
-    .card {
-      background: white;
-      padding: 20px;
-      margin-bottom: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    textarea {
-      width: 100%;
-      margin-top: 10px;
-      padding: 10px;
-      font-size: 14px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-    #previewImg, #outputImg {
-      max-width: 100%;
-      margin-top: 10px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-    }
-    #progressBar {
-      width: 100%;
-      background: #eee;
-      border-radius: 6px;
-      overflow: hidden;
-      margin: 10px 0;
-      display: none;
-    }
-    #progressBar div {
-      height: 20px;
-      width: 0;
-      background: #007bff;
-      transition: width 0.3s;
-    }
-    #log {
-      background: #222;
-      color: #0f0;
-      padding: 10px;
-      font-family: monospace;
-      height: 150px;
-      overflow-y: auto;
-      border-radius: 6px;
-      margin-top: 10px;
-      font-size: 13px;
+    .card{background:#141a2e;border:1px solid #27314a;border-radius:12px;padding:16px;margin:12px auto;max-width:100%}
+    .log{font-family:monospace;background:#0a0f22;border:1px solid #27314a;border-radius:8px;padding:10px;height:160px;overflow:auto}
+    .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+    .thumb{background:#0c1226;border:1px solid #27314a;border-radius:12px;overflow:hidden}
+    .thumb img{width:100%;display:block}
+    .thumb .meta{padding:8px;font-size:12px;color:#9aa4b2;text-align:center}
+    .drop{border:2px dashed #2b3b66;border-radius:10px;padding:18px;text-align:center;color:#c7d2fe;background:#0d1330;margin-bottom:10px}
+    .drop.dragover{outline:2px solid #5eead4}
+    label{display:block;margin-top:10px;font-size:14px;color:#9aa4b2}
+
+    @media(max-width:600px){
+      body { margin:5px; }
+      .card { margin:5px; padding:12px; }
+      select, input, textarea { width:100% !important; box-sizing:border-box; font-size:16px; }
+      .tabs { flex-direction:column; }
+      .thumbs { grid-template-columns:1fr; gap:6px; }
     }
 
-    /* 🔹 全部按鈕 → 大藍按鈕 */
+    /* --------- 大藍按鈕 --------- */
     button,
     input[type="file"]::file-selector-button {
       display: block;
@@ -77,7 +47,7 @@
       border-radius: 6px;
       text-align: center;
       cursor: pointer;
-      width: 100%;          /* 手機版滿版 */
+      width: 100%;
       box-sizing: border-box;
       margin: 8px 0;
       border: none;
@@ -87,159 +57,311 @@
       background: #0056b3;
     }
   </style>
+
+  <!-- 相依套件 -->
+  <script src="https://cdn.jsdelivr.net/npm/pica@8.0.0/dist/pica.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver/dist/FileSaver.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <h1>圖片工具</h1>
+  <h1>Teng Image Tools</h1>
 
-    <!-- 圖片 ➝ Base64 -->
-    <div class="card">
-      <h2>圖片 ➝ Base64</h2>
-      <input type="file" id="imgToBase64" accept="image/*">
-      <button id="convertToBase64">轉換</button>
-      <textarea id="base64Output" rows="6" placeholder="這裡會顯示 Base64"></textarea>
-    </div>
-
-    <!-- Base64 ➝ 圖片 -->
-    <div class="card">
-      <h2>Base64 ➝ 圖片</h2>
-      <input type="file" id="base64File" accept=".txt">
-      <button id="convertToImage">轉換並預覽</button>
-      <img id="outputImg" src="" alt="預覽圖片">
-    </div>
-
-    <!-- 圖片尺寸調整 -->
-    <div class="card">
-      <h2>圖片尺寸調整</h2>
-      <input type="file" id="resizeFiles" accept="image/*" multiple>
-      <select id="resizeOption">
-        <option value="original">原尺寸</option>
-        <option value="512">512</option>
-        <option value="1024">1024</option>
-        <option value="1280">1280</option>
-        <option value="custom">自訂</option>
-      </select>
-      <input type="number" id="customWidth" placeholder="寬度(px)" style="display:none;">
-      <input type="number" id="customHeight" placeholder="高度(px)" style="display:none;">
-      <button id="startResize">開始處理</button>
-      <div id="progressBar"><div></div></div>
-      <button id="downloadZip" style="display:none;">下載 ZIP</button>
-      <div id="log"></div>
-    </div>
+  <!-- 分頁切換 -->
+  <div class="tabs">
+    <div class="tab active" data-tab="resizer">尺寸格式調整</div>
+    <div class="tab" data-tab="base64">Base64轉換</div>
   </div>
 
-  <script>
-    const logArea = document.getElementById("log");
-    function log(msg) {
-      logArea.innerHTML += msg + "<br>";
-      logArea.scrollTop = logArea.scrollHeight;
+  <!-- 圖片尺寸調整 -->
+  <div id="resizer" class="tab-content active">
+    <section class="card">
+      <h2>圖片尺寸/格式調整器</h2>
+      <div class="drop" id="drop">拖曳圖片或資料夾到這裡</div>
+      <input id="fileFiles" type="file" accept="image/*,.heic,.heif" multiple>
+      <input id="fileFolder" type="file" webkitdirectory>
+
+      <h3>執行</h3>
+      <button id="process">開始處理</button>
+      <button id="clear">清空</button>
+
+      <h3>輸出選項</h3>
+      <label>輸出格式
+        <select id="format">
+          <option value="keep">維持原格式</option>
+          <option value="image/jpeg" selected>JPEG</option>
+          <option value="image/png">PNG</option>
+          <option value="image/webp">WebP</option>
+        </select>
+      </label>
+
+      <label>寬度
+        <select id="width">
+          <option value="0" selected>原尺寸</option>
+          <option value="512">512</option>
+          <option value="1024">1024</option>
+          <option value="1280">1280</option>
+          <option value="-1">自訂</option>
+        </select>
+        <input type="number" id="widthCustom" placeholder="自訂寬度" style="display:none; margin-top:5px;">        
+      </label>
+      <label>高度
+        <select id="height">
+          <option value="0" selected>原尺寸</option>
+          <option value="512">512</option>
+          <option value="1024">1024</option>
+          <option value="1280">1280</option>
+          <option value="-1">自訂</option>
+        </select>
+        <input type="number" id="heightCustom" placeholder="自訂高度" style="display:none; margin-top:5px;">
+      </label>
+
+      <label><input id="lock" type="checkbox" checked> 維持長寬比</label>
+      <label><input id="fit" type="checkbox" checked> 以最長邊等比縮放 (fit)</label>
+      <label>縮放比例 (%) <input id="scale" type="range" min="10" max="200" value="100"><span id="scaleLabel">100%</span></label>
+      <label>品質 (JPEG/WebP) <input id="quality" type="range" min="50" max="100" value="90"><span id="qualityLabel">90%</span></label>
+
+      <h3>預覽</h3>
+      <div id="thumbs" class="thumbs"></div>
+      <h3>日誌</h3>
+      <div id="log" class="log"></div>
+    </section>
+  </div>
+
+  <!-- Base64 轉換 -->
+  <div id="base64" class="tab-content">
+    <section class="card">
+      <h2>圖片 → Base64</h2>
+      <input type="file" id="imgToBase64" accept="image/*">
+      <button id="downloadBase64Btn">下載 Base64 txt</button>
+      <textarea id="base64Output" placeholder="這裡會顯示 Base64 編碼"></textarea>
+      <img id="previewBase64Img" class="preview">
+
+      <hr>
+      <h2>Base64 → 圖片</h2>
+      <textarea id="base64Input" placeholder="貼上 Base64 字串（或直接選檔）"></textarea>
+      <input type="file" id="base64File" accept=".txt">
+      <div id="progressContainer" style="width:100%; background:#ddd; height:10px; display:none; margin:10px 0;">
+        <div id="progressBar" style="width:0%; height:100%; background:#4caf50; text-align:center; color:white; font-size:12px;">0%</div>
+      </div>
+      <a id="downloadRestored" style="display:none" download="restored.png">下載圖片</a>
+      <img id="restoredImg" class="preview">
+    </section>
+  </div>
+
+<script>
+const picaInstance = window.pica({features:['js','wasm','cib']});
+
+// ---------- 分頁切換 ----------
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.tab).classList.add("active");
+  });
+});
+
+// ---------- 手機自訂高度 ----------
+document.getElementById("height").addEventListener("change", e=>{
+  document.getElementById("heightCustom").style.display = e.target.value == "-1" ? "block" : "none";
+});
+document.getElementById("width").addEventListener("change", e=>{
+  document.getElementById("widthCustom").style.display = e.target.value == "-1" ? "block" : "none";
+});
+// ---------- 縮放/品質顯示 ----------
+document.getElementById("scale").addEventListener("input", e=>{
+  document.getElementById("scaleLabel").textContent = e.target.value + "%";
+});
+document.getElementById("quality").addEventListener("input", e=>{
+  document.getElementById("qualityLabel").textContent = e.target.value + "%";
+});
+
+// ---------- 日誌 ----------
+const logEl = document.getElementById("log");
+function log(msg){ 
+  const time=new Date().toLocaleTimeString(); 
+  logEl.innerHTML+=`[${time}] ${msg}<br>`; 
+  logEl.scrollTop=logEl.scrollHeight;
+}
+
+// ---------- 縮圖與 Base64 ----------
+const thumbs = document.getElementById("thumbs");
+const queue = [];
+function addThumb(src,name,w,h){
+  const div = document.createElement('div'); div.className='thumb';
+  const img = new Image(); img.src=src; div.appendChild(img);
+  const meta = document.createElement('div'); meta.className='meta';
+  meta.innerHTML=`${name}<br>${w}×${h}px`; div.appendChild(meta);
+  thumbs.appendChild(div);
+}
+
+// ---------- 拖放與檔案 ----------
+const drop=document.getElementById('drop');
+drop.addEventListener('dragover', e=>{e.preventDefault(); drop.classList.add('dragover');});
+drop.addEventListener('dragleave', e=>{e.preventDefault(); drop.classList.remove('dragover');});
+drop.addEventListener('drop', e=>{e.preventDefault(); drop.classList.remove('dragover'); handleFiles([...e.dataTransfer.files]);});
+document.getElementById('fileFiles').addEventListener('change', e=>handleFiles([...e.target.files]));
+document.getElementById('fileFolder').addEventListener('change', e=>handleFiles([...e.target.files]));
+
+async function handleFiles(list){
+  for(const file of list){
+    queue.push(file);
+    addThumb(URL.createObjectURL(file),file.name,'—','—');
+  }
+  log(`加入 ${list.length} 個檔案`);
+}
+
+// ---------- 處理圖片 ----------
+function calcTargetSize(srcW,srcH){
+  let w=srcW, h=srcH;
+  const scale = Number(document.getElementById('scale').value)/100;
+  w = Math.round(w*scale); h = Math.round(h*scale);
+
+  const widthSel = Number(document.getElementById('width').value);
+  const widthCustom = Number(document.getElementById('widthCustom').value);  
+  const heightSel = Number(document.getElementById('height').value);
+  const heightCustom = Number(document.getElementById('heightCustom').value);
+
+  if(widthSel>0 && widthSel!=-1){ w = widthSel; if(document.getElementById('lock').checked) h=Math.round(srcH*widthSel/srcW);}
+  if(widthSel==-1 && widthCustom>0){ w = widthCustom; if(document.getElementById('lock').checked) h=Math.round(srcH*widthCustom/srcW);}
+  
+  if(heightSel>0 && heightSel!=-1){ h = heightSel; if(document.getElementById('lock').checked) w=Math.round(srcW*heightSel/srcH);}
+  if(heightSel==-1 && heightCustom>0){ h = heightCustom; if(document.getElementById('lock').checked) w=Math.round(srcW*heightCustom/srcH);}
+  return {w,h}; 
+}
+
+function guessMime(name,original){
+  const fmt = document.getElementById('format').value;
+  if(fmt!='keep') return fmt;
+  const ext = (name.split('.').pop()||'').toLowerCase();
+  const map = {jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp'};
+  return map[ext]||original||'image/jpeg';
+}
+
+async function readAsImage(blob){
+  return new Promise((res,rej)=>{
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload=()=>{URL.revokeObjectURL(url); res(img);};
+    img.onerror=rej;
+    img.src=url;
+  });
+}
+
+async function processFile(file){
+  try{
+    let f=file;
+    if(file.name.toLowerCase().endsWith(".heic")||file.name.toLowerCase().endsWith(".heif")){
+      const blob = await heic2any({blob:file,toType:"image/png"});
+      f = new File([blob],file.name.replace(/\.(heic|heif)$/i,'.png'),{type:"image/png"});
     }
+    const img = await readAsImage(f);
+    const {w,h} = calcTargetSize(img.naturalWidth,img.naturalHeight);
+    const canvas = document.createElement('canvas'); canvas.width=w; canvas.height=h;
+    await picaInstance.resize(img,canvas,{quality:3,alpha:true});
+    const mime = guessMime(f.name,f.type);
+    const quality = Number(document.getElementById('quality').value)/100;
+    const outBlob = await picaInstance.toBlob(canvas,mime,(mime.includes('jpeg')||mime.includes('webp'))?quality:undefined);
+    const extMap={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
+    const ext = extMap[mime]||'jpg';
+    const outName = `${file.name.replace(/\.[^.]+$/,'')}_${w}x${h}.${ext}`;
+    return {blob:outBlob,name:outName,w,h};
+  }catch(e){ log(`錯誤：${file.name} → ${e}`); return null;}
+}
 
-    // 圖片 ➝ Base64
-    document.getElementById("convertToBase64").addEventListener("click", () => {
-      const file = document.getElementById("imgToBase64").files[0];
-      if (!file) return alert("請先選擇圖片");
-      const reader = new FileReader();
-      reader.onload = () => {
-        document.getElementById("base64Output").value = reader.result;
-        log("圖片已轉換為 Base64");
-      };
-      reader.readAsDataURL(file);
-    });
+document.getElementById('process').addEventListener('click', async()=>{
+  if(queue.length===0){ log('尚未選擇檔案'); return;}
+  log(`開始處理 ${queue.length} 個檔案…`);
+  const results = [];
+  for(const f of queue){ const r=await processFile(f); if(r) results.push(r);}
+  if(results.length===1) downloadBlob(results[0].blob,results[0].name);
+  else if(results.length>1){
+    const zip = new JSZip(); results.forEach(r=>zip.file(r.name,r.blob));
+    const content = await zip.generateAsync({type:'blob'}); saveAs(content,'images.zip');
+    log('全部完成 ✅ (已打包 ZIP)');
+  }
+});
 
-    // Base64 ➝ 圖片
-    document.getElementById("convertToImage").addEventListener("click", () => {
-      const file = document.getElementById("base64File").files[0];
-      if (!file) return alert("請先選擇 Base64 檔案");
-      const reader = new FileReader();
-      reader.onload = () => {
-        let base64 = reader.result.trim();
-        if (!base64.startsWith("data:image")) {
-          base64 = "data:image/png;base64," + base64;
-        }
-        document.getElementById("outputImg").src = base64;
-        log("Base64 已轉換為圖片");
-      };
-      reader.readAsText(file);
-    });
+function downloadBlob(blob,name){ const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(url),2000);}
+document.getElementById('clear').addEventListener('click',()=>{queue.length=0; thumbs.innerHTML=''; log('已清空佇列');});
 
-    // 尺寸調整
-    const resizeOption = document.getElementById("resizeOption");
-    const customWidth = document.getElementById("customWidth");
-    const customHeight = document.getElementById("customHeight");
+// ---------- Base64 ----------
+const base64Output = document.getElementById('base64Output');
+const previewBase64Img = document.getElementById('previewBase64Img');
+const base64File = document.getElementById('base64File');
+const base64Input = document.getElementById('base64Input');
+const restoredImg = document.getElementById('restoredImg');
+const downloadRestored = document.getElementById('downloadRestored');
+const progressContainer = document.getElementById('progressContainer');
+const progressBar = document.getElementById('progressBar');
 
-    resizeOption.addEventListener("change", () => {
-      if (resizeOption.value === "custom") {
-        customWidth.style.display = "inline-block";
-        customHeight.style.display = "inline-block";
-      } else {
-        customWidth.style.display = "none";
-        customHeight.style.display = "none";
-      }
-    });
+function showProgress(){
+  progressContainer.style.display='block';
+  progressBar.style.width='0%'; progressBar.textContent='0%';
+  let progress=0;
+  const interval = setInterval(()=>{ progress+=20; if(progress>=90) clearInterval(interval); progressBar.style.width=progress+'%'; progressBar.textContent=progress+'%'; },200);
+}
 
-    document.getElementById("startResize").addEventListener("click", () => {
-      const files = document.getElementById("resizeFiles").files;
-      if (!files.length) return alert("請先選擇圖片");
+function hideProgress(){
+  progressBar.style.width='100%'; progressBar.textContent='100%';
+  setTimeout(()=>{progressContainer.style.display='none';},500);
+}
 
-      let width, height;
-      if (resizeOption.value === "custom") {
-        width = parseInt(customWidth.value);
-        height = parseInt(customHeight.value);
-        if (!width || !height) return alert("請輸入自訂寬高");
-      } else if (resizeOption.value !== "original") {
-        width = parseInt(resizeOption.value);
-      }
+document.getElementById('imgToBase64').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = evt=>{
+    base64Output.value = evt.target.result.split(',')[1];
+    previewBase64Img.src = evt.target.result;
+  };
+  reader.readAsDataURL(file);
+});
 
-      const progressBar = document.getElementById("progressBar");
-      const progressFill = progressBar.firstElementChild;
-      progressBar.style.display = "block";
-      progressFill.style.width = "0%";
+document.getElementById('downloadBase64Btn').addEventListener('click', ()=>{
+  const blob = new Blob([base64Output.value],{type:'text/plain'});
+  downloadBlob(blob,'image_base64.txt');
+});
 
-      const zip = new JSZip();
-      let processed = 0;
+base64File.addEventListener('change', e=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  showProgress();
+  reader.onload = evt=>{
+    base64Input.value = evt.target.result.trim();
+    convertBase64ToImage();
+  };
+  reader.readAsText(file);
+});
 
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement("canvas");
-            if (width && height) {
-              canvas.width = width;
-              canvas.height = height;
-            } else if (width) {
-              canvas.width = width;
-              canvas.height = img.height * (width / img.width);
-            } else {
-              canvas.width = img.width;
-              canvas.height = img.height;
-            }
-            canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob(blob => {
-              zip.file(file.name, blob);
-              processed++;
-              const percent = Math.round((processed / files.length) * 100);
-              progressFill.style.width = percent + "%";
-              log(`處理完成：${file.name}`);
-              if (processed === files.length) {
-                zip.generateAsync({ type: "blob" }).then(content => {
-                  const link = document.createElement("a");
-                  link.href = URL.createObjectURL(content);
-                  link.download = "resized_images.zip";
-                  document.getElementById("downloadZip").style.display = "block";
-                  document.getElementById("downloadZip").onclick = () => link.click();
-                  log("所有圖片已完成，點擊下載 ZIP");
-                });
-              }
-            }, "image/png");
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
-    });
-  </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+base64Input.addEventListener('input', ()=>{
+  if(base64Input.value.trim()!==''){ showProgress(); convertBase64ToImage(); }
+});
+
+function detectFormat(base64){
+  if(base64.startsWith("iVBORw0KGgo")) return "png";
+  if(base64.startsWith("/9j/")) return "jpeg";
+  if(base64.startsWith("UklGR")) return "webp";
+  return "png";
+}
+
+function convertBase64ToImage(){
+  let raw = base64Input.value.trim(); if(!raw) return;
+  let format, base64 = raw;
+  if(!raw.startsWith("data:image/")){
+    format = detectFormat(raw);
+    base64 = `data:image/${format};base64,` + raw;
+  } else {
+    const match = raw.match(/^data:image\/(png|jpeg|jpg|webp);base64,/);
+    format = match ? match[1] : "png"; base64 = raw;
+  }
+  restoredImg.onload = ()=>hideProgress();
+  restoredImg.src = base64;
+  downloadRestored.href = base64;
+  downloadRestored.download = "restored."+format;
+  downloadRestored.style.display='inline-block';
+}
+</script>
 </body>
 </html>
