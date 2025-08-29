@@ -3,41 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>Teng Image Tools</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background:#0b1020; color:#e7ecf3; }
     h1, h2 { text-align: center; }
-    
-    /* -------- 分頁按鈕 -------- */
-    .tabs {
-      display: flex;
-      justify-content: center;
-      gap: 10px;           /* 按鈕間距 */
-      margin-bottom: 20px;
-    }
-    .tab {
-      padding: 10px 20px;
-      cursor: pointer;
-      border-radius: 6px;
-      background: #0b1a40; /* 深藍色 */
-      color: #e7ecf3;
-      font-weight: bold;
-      border: 1px solid #07306d;
-      transition: all 0.2s;
-    }
-    .tab:hover {
-      background: #163063; /* hover 變亮 */
-    }
-    .tab.active {
-      background: #0050a0; /* 點選後亮藍 */
-      color: #fff;
-      border-color: #0050a0;
-    }
-
+    /* 分頁按鈕 */
+    .tabs { display: flex; justify-content: center; margin-bottom: 20px; flex-wrap:wrap; gap:10px; }
+    .tab { padding: 10px 20px; cursor: pointer; border-radius:6px; background:#002366; color:#fff; font-weight:bold; }
+    .tab.active { background:#0044aa; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-
     textarea { width: 100%; height: 150px; }
     img.preview { max-width: 100%; max-height: 200px; display: block; margin: 10px auto; }
     button { margin: 10px 0; padding:10px; font-size:16px; cursor:pointer; }
@@ -55,11 +30,17 @@
     .drop.dragover{outline:2px solid #5eead4}
     label{display:block;margin-top:10px;font-size:14px;color:#9aa4b2}
 
+    /* 深藍按鈕檔案選擇 */
+    .file-btn {
+      display:inline-block; padding:10px 20px; background:#002366; color:#fff; border-radius:6px; cursor:pointer; margin:5px 0; text-align:center;
+    }
+    .file-btn input[type=file]{ display:none; }
+
     @media(max-width:600px){
       body { margin:5px; }
       .card { margin:5px; padding:12px; }
       button, select, input, textarea { width:100% !important; box-sizing:border-box; font-size:16px; }
-      .tabs { flex-direction:row; } /* 手機保持左右排列 */
+      .tabs { flex-direction:row; gap:5px; flex-wrap:wrap; }
       .thumbs { grid-template-columns:1fr; gap:6px; }
     }
   </style>
@@ -71,89 +52,98 @@
   <script src="https://cdn.jsdelivr.net/npm/file-saver/dist/FileSaver.min.js"></script>
 </head>
 <body>
-  <h1>Teng Image Tools</h1>
+<h1>Teng Image Tools</h1>
 
-  <!-- 分頁切換 -->
-  <div class="tabs">
-    <div class="tab active" data-tab="resizer">尺寸格式調整</div>
-    <div class="tab" data-tab="base64">Base64轉換</div>
-  </div>
+<!-- 分頁切換 -->
+<div class="tabs">
+  <div class="tab active" data-tab="resizer">尺寸格式調整</div>
+  <div class="tab" data-tab="base64">Base64轉換</div>
+</div>
 
-  <!-- 圖片尺寸調整 -->
-  <div id="resizer" class="tab-content active">
-    <section class="card">
-      <h2>圖片尺寸/格式調整器</h2>
-      <div class="drop" id="drop">拖曳圖片或資料夾到這裡</div>
+<!-- 圖片尺寸調整 -->
+<div id="resizer" class="tab-content active">
+  <section class="card">
+    <h2>圖片尺寸/格式調整器</h2>
+    <div class="drop" id="drop">拖曳圖片或資料夾到這裡</div>
+    <label class="file-btn">選擇檔案
       <input id="fileFiles" type="file" accept="image/*,.heic,.heif" multiple>
+    </label>
+    <label class="file-btn">選擇資料夾
       <input id="fileFolder" type="file" webkitdirectory>
+    </label>
 
-      <h3>執行</h3>
-      <button id="process">開始處理</button>
-      <button id="clear">清空</button>
+    <h3>執行</h3>
+    <button id="process">開始處理</button>
+    <button id="clear">清空</button>
 
-      <h3>輸出選項</h3>
-      <label>輸出格式
-        <select id="format">
-          <option value="keep">維持原格式</option>
-          <option value="image/jpeg" selected>JPEG</option>
-          <option value="image/png">PNG</option>
-          <option value="image/webp">WebP</option>
-        </select>
-      </label>
+    <h3>輸出選項</h3>
+    <label>輸出格式
+      <select id="format">
+        <option value="keep">維持原格式</option>
+        <option value="image/jpeg" selected>JPEG</option>
+        <option value="image/png">PNG</option>
+        <option value="image/webp">WebP</option>
+      </select>
+    </label>
 
-      <label>寬度
-        <select id="width">
-          <option value="0" selected>原尺寸</option>
-          <option value="512">512</option>
-          <option value="1024">1024</option>
-          <option value="1280">1280</option>
-          <option value="-1">自訂</option>
-        </select>
-        <input type="number" id="widthCustom" placeholder="自訂寬度" style="display:none; margin-top:5px;">        
-      </label>
-      <label>高度
-        <select id="height">
-          <option value="0" selected>原尺寸</option>
-          <option value="512">512</option>
-          <option value="1024">1024</option>
-          <option value="1280">1280</option>
-          <option value="-1">自訂</option>
-        </select>
-        <input type="number" id="heightCustom" placeholder="自訂高度" style="display:none; margin-top:5px;">
-      </label>
+    <label>寬度
+      <select id="width">
+        <option value="0" selected>原尺寸</option>
+        <option value="512">512</option>
+        <option value="1024">1024</option>
+        <option value="1280">1280</option>
+        <option value="-1">自訂</option>
+      </select>
+      <input type="number" id="widthCustom" placeholder="自訂寬度" style="display:none; margin-top:5px;">        
+    </label>
+    <label>高度
+      <select id="height">
+        <option value="0" selected>原尺寸</option>
+        <option value="512">512</option>
+        <option value="1024">1024</option>
+        <option value="1280">1280</option>
+        <option value="-1">自訂</option>
+      </select>
+      <input type="number" id="heightCustom" placeholder="自訂高度" style="display:none; margin-top:5px;">
+    </label>
 
-      <label><input id="lock" type="checkbox" checked> 維持長寬比</label>
-      <label><input id="fit" type="checkbox" checked> 以最長邊等比縮放 (fit)</label>
-      <label>縮放比例 (%) <input id="scale" type="range" min="10" max="200" value="100"><span id="scaleLabel">100%</span></label>
-      <label>品質 (JPEG/WebP) <input id="quality" type="range" min="50" max="100" value="90"><span id="qualityLabel">90%</span></label>
+    <label><input id="lock" type="checkbox" checked> 維持長寬比</label>
+    <label><input id="fit" type="checkbox" checked> 以最長邊等比縮放 (fit)</label>
+    <label>縮放比例 (%) <input id="scale" type="range" min="10" max="200" value="100"><span id="scaleLabel">100%</span></label>
+    <label>品質 (JPEG/WebP) <input id="quality" type="range" min="50" max="100" value="90"><span id="qualityLabel">90%</span></label>
 
-      <h3>預覽</h3>
-      <div id="thumbs" class="thumbs"></div>
-      <h3>日誌</h3>
-      <div id="log" class="log"></div>
-    </section>
-  </div>
+    <h3>預覽</h3>
+    <div id="thumbs" class="thumbs"></div>
+    <h3>日誌</h3>
+    <div id="log" class="log"></div>
+  </section>
+</div>
 
-  <!-- Base64 轉換 -->
-  <div id="base64" class="tab-content">
-    <section class="card">
-      <h2>圖片 → Base64</h2>
+<!-- Base64 轉換 -->
+<div id="base64" class="tab-content">
+  <section class="card">
+    <h2>圖片 → Base64</h2>
+    <label class="file-btn">選擇檔案
       <input type="file" id="imgToBase64" accept="image/*">
-      <button id="downloadBase64Btn">下載 Base64 txt</button>
-      <textarea id="base64Output" placeholder="這裡會顯示 Base64 編碼"></textarea>
-      <img id="previewBase64Img" class="preview">
+    </label>
+    <button id="downloadBase64Btn">下載 Base64 txt</button>
+    <textarea id="base64Output" placeholder="這裡會顯示 Base64 編碼"></textarea>
+    <img id="previewBase64Img" class="preview">
 
-      <hr>
-      <h2>Base64 → 圖片</h2>
-      <textarea id="base64Input" placeholder="貼上 Base64 字串（或直接選檔）"></textarea>
+    <hr>
+    <h2>Base64 → 圖片</h2>
+    <textarea id="base64Input" placeholder="貼上 Base64 字串（或直接選檔）"></textarea>
+    <label class="file-btn">選擇檔案
       <input type="file" id="base64File" accept=".txt">
-      <div id="progressContainer" style="width:100%; background:#ddd; height:10px; display:none; margin:10px 0;">
-        <div id="progressBar" style="width:0%; height:100%; background:#4caf50; text-align:center; color:white; font-size:12px;">0%</div>
-      </div>
-      <a id="downloadRestored" style="display:none" download="restored.png">下載圖片</a>
-      <img id="restoredImg" class="preview">
-    </section>
-  </div>
+    </label>
+
+    <div id="progressContainer" style="width:100%; background:#ddd; height:10px; display:none; margin:10px 0;">
+      <div id="progressBar" style="width:0%; height:100%; background:#4caf50; text-align:center; color:white; font-size:12px;">0%</div>
+    </div>
+    <a id="downloadRestored" style="display:none" download="restored.png">下載圖片</a>
+    <img id="restoredImg" class="preview">
+  </section>
+</div>
 
 <script>
 const picaInstance = window.pica({features:['js','wasm','cib']});
