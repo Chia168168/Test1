@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TENG Base64 圖片轉檔工具 v1.1</title>
+    <title>TENG Base64 圖片轉檔工具 v1.2</title>
     <script src="https://unpkg.com/heic2any@0.0.4/dist/heic2any.min.js"></script>
     <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
@@ -39,6 +39,15 @@
             background-color: #f0f0f0;
             border: 1px solid #ccc;
             border-radius: 4px;
+        }
+        #downloadButton {
+            font-size: 18px;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            display: none;
         }
         #fileList {
             max-height: 150px;
@@ -84,7 +93,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>TENG Base64 圖片轉檔工具 v1.1</h1>
+        <h1>TENG Base64 圖片轉檔工具 v1.2</h1>
         
         <div class="file-button-container">
             <div>
@@ -111,23 +120,27 @@
         
         <div class="base64-container">
             <label>輸入 Base64 字串:</label>
-            <textarea id="base64Text" placeholder="在此輸入 Base64 字串（例如 data:image/jpeg;base64,... 或純 Base64 字串）"></textarea>
+            <textarea id="base64Text" placeholder="在此輸入 Base64 字串（例如 data:image/png;base64,... 或純 Base64 字串）"></textarea>
         </div>
         
         <div>
             <label>輸出格式 (Base64 轉圖片):</label>
             <select id="formatSelect">
+                <option value="image/png" selected>PNG</option>
                 <option value="image/jpeg">JPEG</option>
-                <option value="image/png">PNG</option>
                 <option value="image/webp">WebP</option>
             </select>
         </div>
         
-        <p class="note">注意：支援圖片轉 Base64 及 Base64 轉圖片（JPEG、PNG、WebP）。若 Base64 字串缺少前綴，工具會自動嘗試補充。HEIC/HEIF 輸入已支援。多檔案處理將自動打包為 ZIP 檔案。</p>
+        <p class="note">注意：支援圖片轉 Base64 及 Base64 轉圖片（預設 PNG）。若 Base64 字串缺少前綴，工具會自動嘗試補充。HEIC/HEIF 輸入已支援。多檔案處理將自動打包為 ZIP 檔案。</p>
         
         <div class="file-button-container">
             <button class="process-button" onclick="processImageToBase64()">圖片轉 Base64</button>
             <button class="process-button" onclick="processBase64ToImage()">Base64 轉圖片</button>
+        </div>
+        
+        <div>
+            <button id="downloadButton">下載結果</button>
         </div>
         
         <div>
@@ -139,21 +152,26 @@
             <h3>Base64 內容:</h3>
             <div id="base64Output"></div>
         </div>
-        
-        <div>
-            <a id="downloadLink" style="display: none;">下載結果</a>
-        </div>
     </div>
 
     <script>
         let originalImages = [];
         let base64Data = [];
         let processedBlobs = [];
+        let downloadBlob = null;
+        let downloadFileName = '';
 
         // 處理檔案輸入（圖片或 Base64 檔案）
         document.getElementById('imageInput').addEventListener('change', e => handleFileSelect(e, true, 'image'));
         document.getElementById('folderInput').addEventListener('change', e => handleFileSelect(e, true, 'image'));
         document.getElementById('base64Input').addEventListener('change', e => handleFileSelect(e, true, 'base64'));
+
+        // 下載按鈕點擊事件
+        document.getElementById('downloadButton').addEventListener('click', () => {
+            if (downloadBlob && downloadFileName) {
+                saveAs(downloadBlob, downloadFileName);
+            }
+        });
 
         function handleFileSelect(e, append = false, type = 'image') {
             const files = e.target.files;
@@ -167,6 +185,7 @@
                 document.getElementById('previewContainer').innerHTML = '';
                 document.getElementById('base64Output').innerHTML = '';
                 document.getElementById('base64Text').value = '';
+                document.getElementById('downloadButton').style.display = 'none';
             }
 
             Array.from(files).forEach((file, index) => {
@@ -328,20 +347,18 @@
                 }
             }
 
-            const downloadLink = document.getElementById('downloadLink');
-            downloadLink.style.display = 'block';
+            const downloadButton = document.getElementById('downloadButton');
+            downloadButton.style.display = 'block';
 
             if (originalImages.filter(item => item.type === 'image').length === 1) {
                 const { base64, name } = base64Data[0];
-                const blob = new Blob([base64], { type: 'text/plain' });
-                downloadLink.href = URL.createObjectURL(blob);
-                downloadLink.download = `${name}.txt`;
-                downloadLink.textContent = '下載 Base64 檔案';
+                downloadBlob = new Blob([base64], { type: 'text/plain' });
+                downloadFileName = `${name}.txt`;
+                downloadButton.textContent = '下載 Base64 檔案';
             } else {
-                const zipBlob = await zip.generateAsync({ type: 'blob' });
-                downloadLink.href = URL.createObjectURL(zipBlob);
-                downloadLink.download = 'base64_files.zip';
-                downloadLink.textContent = '下載 Base64 ZIP 壓縮檔';
+                downloadBlob = await zip.generateAsync({ type: 'blob' });
+                downloadFileName = 'base64_files.zip';
+                downloadButton.textContent = '下載 Base64 ZIP 壓縮檔';
             }
         }
 
@@ -385,7 +402,7 @@
                         canvas.height = img.height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0);
-                        const blob = await new Promise(resolve => canvas.toBlob(resolve, format, 0.9));
+                        const blob = await new Promise(resolve => canvas.toBlob(resolve, format, format === 'image/png' ? 1.0 : 0.9));
                         const fileName = `converted_image_${Date.now()}.${format.split('/')[1]}`;
                         processedBlobs.push({ blob, name: fileName });
 
@@ -399,11 +416,11 @@
                         if (base64Files.length > 0) {
                             zip.file(fileName, blob);
                         } else {
-                            const downloadLink = document.getElementById('downloadLink');
-                            downloadLink.style.display = 'block';
-                            downloadLink.href = URL.createObjectURL(blob);
-                            downloadLink.download = fileName;
-                            downloadLink.textContent = '下載轉換後的圖片';
+                            const downloadButton = document.getElementById('downloadButton');
+                            downloadButton.style.display = 'block';
+                            downloadBlob = blob;
+                            downloadFileName = fileName;
+                            downloadButton.textContent = '下載轉換後的圖片';
                         }
                     };
                     img.onerror = function() {
@@ -425,7 +442,7 @@
                         canvas.height = img.height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0);
-                        const blob = await new Promise(resolve => canvas.toBlob(resolve, format, 0.9));
+                        const blob = await new Promise(resolve => canvas.toBlob(resolve, format, format === 'image/png' ? 1.0 : 0.9));
                         const originalName = item.file.name.split('.').slice(0, -1).join('.');
                         const extension = format.split('/')[1];
                         const newFileName = `${originalName}.${extension}`;
@@ -442,11 +459,11 @@
 
                         if (i === base64Files.length - 1 || (base64String && i === base64Files.length - 1)) {
                             const zipBlob = await zip.generateAsync({ type: 'blob' });
-                            const downloadLink = document.getElementById('downloadLink');
-                            downloadLink.style.display = 'block';
-                            downloadLink.href = URL.createObjectURL(zipBlob);
-                            downloadLink.download = 'converted_images.zip';
-                            downloadLink.textContent = '下載轉換後的圖片 ZIP 壓縮檔';
+                            const downloadButton = document.getElementById('downloadButton');
+                            downloadButton.style.display = 'block';
+                            downloadBlob = zipBlob;
+                            downloadFileName = 'converted_images.zip';
+                            downloadButton.textContent = '下載轉換後的圖片 ZIP 壓縮檔';
                         }
                     };
                     img.onerror = function() {
